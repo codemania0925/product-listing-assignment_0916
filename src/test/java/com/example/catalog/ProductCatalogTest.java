@@ -7,6 +7,8 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.math.BigDecimal;
 import java.time.LocalDate;
+import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
 
 import org.junit.jupiter.api.Test;
@@ -65,6 +67,27 @@ class ProductCatalogTest {
         assertThrows(IllegalStateException.class, () -> catalog.getPage(1, 10));
     }
 
+    /** バグ3: 同じ日に出品された商品が、ページをまたいで重複したり欠落したりしていた。 */
+    @Test
+    void pagingReturnsEveryProductExactlyOnceWhenTheRepositoryOrderChanges() {
+        LocalDate sameDay = LocalDate.of(2026, 9, 1);
+        List<Product> products = List.of(
+                product("a", sameDay), product("b", sameDay), product("c", sameDay),
+                product("d", sameDay), product("e", sameDay), draft("f"));
+        ProductCatalog catalog = new ProductCatalog(new ReorderingRepository(products));
+
+        List<String> seen = new ArrayList<>();
+        for (int page = 1; page <= products.size(); page++) {
+            CatalogPage current = catalog.getPage(page, 2);
+            seen.addAll(skus(current));
+            if (!current.hasNext()) {
+                break;
+            }
+        }
+
+        assertEquals(List.of("a", "b", "c", "d", "e", "f"), seen.stream().sorted().toList());
+    }
+
     private static Product product(String sku, LocalDate listedAt) {
         return new Product(sku, "Product " + sku, "cables", new BigDecimal("10.00"), listedAt);
     }
@@ -79,5 +102,26 @@ class ProductCatalogTest {
 
     private static List<String> skus(CatalogPage page) {
         return page.products().stream().map(Product::sku).toList();
+    }
+
+    /**
+     * 呼び出すたびに違う順序を返すリポジトリ。ORDER BY の無いデータベースと同じ状況を作る。
+     * shuffle ではなく rotate にして、再現を決定的にしている。
+     */
+    private static final class ReorderingRepository implements ProductRepository {
+
+        private final List<Product> products;
+        private int rotation;
+
+        ReorderingRepository(List<Product> products) {
+            this.products = List.copyOf(products);
+        }
+
+        @Override
+        public List<Product> findAll() {
+            List<Product> reordered = new ArrayList<>(products);
+            Collections.rotate(reordered, ++rotation);
+            return reordered;
+        }
     }
 }
