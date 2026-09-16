@@ -3,20 +3,26 @@ package com.example.catalog;
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.List;
-import java.util.logging.Level;
-import java.util.logging.Logger;
+import java.util.Objects;
 
 /**
  * Builds the pages of the product listing, newest listing first.
  */
 public class ProductCatalog {
 
-    private static final Logger LOG = Logger.getLogger(ProductCatalog.class.getName());
+    /**
+     * 出品日の新しい順。下書きはまだ出品日を持たないため、出品済みの商品より後ろに並べる。
+     *
+     * <p>nullsLast は comparing の内側に置く。外側の comparator に reversed() を掛けると
+     * null の扱いまで反転し、下書きが先頭に来てしまうため。
+     */
+    private static final Comparator<Product> NEWEST_FIRST =
+            Comparator.comparing(Product::listedAt, Comparator.nullsLast(Comparator.reverseOrder()));
 
     private final ProductRepository repository;
 
     public ProductCatalog(ProductRepository repository) {
-        this.repository = repository;
+        this.repository = Objects.requireNonNull(repository, "repository");
     }
 
     /**
@@ -24,19 +30,14 @@ public class ProductCatalog {
      * @param pageSize maximum number of products on a page
      */
     public CatalogPage getPage(int page, int pageSize) {
-        try {
-            List<Product> products = new ArrayList<>(repository.findAll());
-            products.sort(Comparator.comparing(Product::listedAt).reversed());
+        List<Product> products = new ArrayList<>(repository.findAll());
+        products.sort(NEWEST_FIRST);
 
-            int from = (page - 1) * pageSize;
-            if (from >= products.size()) {
-                return CatalogPage.empty(page, pageSize);
-            }
-            int to = Math.min(from + pageSize, products.size());
-            return new CatalogPage(List.copyOf(products.subList(from, to)), page, pageSize, to < products.size());
-        } catch (RuntimeException e) {
-            LOG.log(Level.WARNING, "Could not build the product listing", e);
+        int from = (page - 1) * pageSize;
+        if (from >= products.size()) {
             return CatalogPage.empty(page, pageSize);
         }
+        int to = Math.min(from + pageSize, products.size());
+        return new CatalogPage(List.copyOf(products.subList(from, to)), page, pageSize, to < products.size());
     }
 }
