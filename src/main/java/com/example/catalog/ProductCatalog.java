@@ -32,16 +32,27 @@ public class ProductCatalog {
     /**
      * @param page     1-based page number
      * @param pageSize maximum number of products on a page
+     * @return 指定されたページ。最終ページより先を指している場合は空のページ
+     * @throws IllegalArgumentException {@code page} または {@code pageSize} が 1 未満の場合
      */
     public CatalogPage getPage(int page, int pageSize) {
+        if (page < 1) {
+            throw new IllegalArgumentException("page must be at least 1, but was " + page);
+        }
+        if (pageSize < 1) {
+            throw new IllegalArgumentException("pageSize must be at least 1, but was " + pageSize);
+        }
+
         List<Product> products = new ArrayList<>(repository.findAll());
         products.sort(NEWEST_FIRST);
 
-        int from = (page - 1) * pageSize;
-        if (from >= products.size()) {
+        // 大きいページ番号と pageSize の積は int を溢れるため、開始位置は long で計算する。
+        long offset = (long) (page - 1) * pageSize;
+        if (offset >= products.size()) {
             return CatalogPage.empty(page, pageSize);
         }
-        int to = Math.min(from + pageSize, products.size());
+        int from = (int) offset;
+        int to = (int) Math.min(offset + pageSize, products.size());
         return new CatalogPage(List.copyOf(products.subList(from, to)), page, pageSize, to < products.size());
     }
 }
