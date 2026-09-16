@@ -50,6 +50,16 @@ class AppTest {
         assertEquals(400, get("/products?page=0").statusCode());
     }
 
+    /** 一覧の組み立てに失敗したらサーバエラーを返す。空ページでも接続切断でもない。 */
+    @Test
+    void answersWithAServerErrorWhenTheCatalogFails() throws Exception {
+        server = App.start(0, () -> {
+            throw new IllegalStateException("database is down");
+        });
+
+        assertEquals(500, get("/products").statusCode());
+    }
+
     private HttpResponse<String> get(String path) throws Exception {
         URI uri = URI.create("http://localhost:" + server.getAddress().getPort() + path);
         HttpRequest request = HttpRequest.newBuilder(uri).timeout(Duration.ofSeconds(5)).build();
