@@ -48,6 +48,36 @@ class CatalogJsonWriterTest {
         assertTrue(product.get("listedAt").isNull(), "listedAt は文字列の null ではなく JSON の null であること");
     }
 
+    /** バグ2: {@code Monitor 27" 4K} は名前の途中で JSON 文字列を閉じてしまっていた。 */
+    @Test
+    void escapesQuotesAndBackslashesInNames() throws Exception {
+        String name = "Monitor 27\" 4K \\ \"wide\"";
+
+        assertEquals(name, productOf(pageWithName(name)).get("name").asText());
+    }
+
+    /** バグ2: 制御文字は JSON 文字列の中にそのまま書けない。 */
+    @Test
+    void escapesControlCharactersInNames() throws Exception {
+        String name = "two\nlines\tand a bell" + (char) 0x07;
+
+        assertEquals(name, productOf(pageWithName(name)).get("name").asText());
+    }
+
+    /** バグ2: ASCII 以外の名前もそのまま読める形で出力する。 */
+    @Test
+    void keepsNamesOutsideAsciiReadable() throws Exception {
+        String name = "テンキーレスキーボード 日本語配列";
+
+        assertEquals(name, productOf(pageWithName(name)).get("name").asText());
+    }
+
+    private static CatalogPage pageWithName(String name) {
+        return new CatalogPage(List.of(
+                new Product("MON-27-4K", name, "monitors", new BigDecimal("329.00"), LocalDate.of(2026, 3, 1))),
+                1, 10, false);
+    }
+
     private static JsonNode productOf(CatalogPage page) throws Exception {
         return new ObjectMapper().readTree(new CatalogJsonWriter().write(page)).get("products").get(0);
     }
