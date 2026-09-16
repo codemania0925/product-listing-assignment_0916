@@ -15,9 +15,13 @@ public class ProductCatalog {
      *
      * <p>nullsLast は comparing の内側に置く。外側の comparator に reversed() を掛けると
      * null の扱いまで反転し、下書きが先頭に来てしまうため。
+     *
+     * <p>同順位は SKU で解消する。これが無いと出品日が同じ商品はリポジトリが返した順のままになり、
+     * ページごとに呼び出すたび順序が変わって、どの商品がどのページにいるか食い違う。
      */
     private static final Comparator<Product> NEWEST_FIRST =
-            Comparator.comparing(Product::listedAt, Comparator.nullsLast(Comparator.reverseOrder()));
+            Comparator.comparing(Product::listedAt, Comparator.nullsLast(Comparator.reverseOrder()))
+                    .thenComparing(Product::sku);
 
     private final ProductRepository repository;
 
