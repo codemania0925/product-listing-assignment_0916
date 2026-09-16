@@ -5,6 +5,9 @@ import java.util.List;
 
 /**
  * Writes a {@link CatalogPage} as JSON for the front-end team.
+ *
+ * <p>商品データは店舗側の入力なので、文字列はすべて {@link #appendString} を通し、RFC 8259 に従って
+ * エスケープする。ASCII 以外の文字はそのまま書き出す（応答は UTF-8 で送るため）。
  */
 public class CatalogJsonWriter {
 
@@ -39,18 +42,39 @@ public class CatalogJsonWriter {
     }
 
     /**
-     * JSON 文字列を追記する。値が無い場合はリテラルの {@code null} を書く。
+     * エスケープ済みの JSON 文字列を追記する。値が無い場合はリテラルの {@code null} を書く。
      */
     private static void appendString(StringBuilder json, String value) {
         if (value == null) {
             json.append("null");
             return;
         }
-        json.append('"').append(value).append('"');
+        json.append('"');
+        for (int i = 0; i < value.length(); i++) {
+            char c = value.charAt(i);
+            switch (c) {
+                case '"' -> json.append("\\\"");
+                case '\\' -> json.append("\\\\");
+                case '\b' -> json.append("\\b");
+                case '\f' -> json.append("\\f");
+                case '\n' -> json.append("\\n");
+                case '\r' -> json.append("\\r");
+                case '\t' -> json.append("\\t");
+                default -> {
+                    if (c < 0x20) {
+                        json.append(String.format("\\u%04x", (int) c));
+                    } else {
+                        json.append(c);
+                    }
+                }
+            }
+        }
+        json.append('"');
     }
 
     /**
      * JSON 数値を指数表記なしで追記する。値が無い場合はリテラルの {@code null} を書く。
+     * {@code 1E+3} のような表記がフロントに渡らないようにするため。
      */
     private static void appendNumber(StringBuilder json, BigDecimal value) {
         json.append(value == null ? "null" : value.toPlainString());
