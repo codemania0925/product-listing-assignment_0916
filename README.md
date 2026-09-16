@@ -3,3 +3,5 @@
 The assignment, the bug reports, and how to submit are in [TASK.md](TASK.md).
 
 Requirements: Java 17 or later and Maven 3.9. Run the tests with `mvn test`.
+
+3件のバグ修正の解説は [SOLUTION.md](SOLUTION.md) にあります。
