@@ -88,6 +88,25 @@ class ProductCatalogTest {
         assertEquals(List.of("a", "b", "c", "d", "e", "f"), seen.stream().sorted().toList());
     }
 
+    @Test
+    void rejectsPageNumbersAndPageSizesBelowOne() {
+        ProductCatalog catalog = catalogOf(product("a", LocalDate.of(2026, 1, 1)));
+
+        assertThrows(IllegalArgumentException.class, () -> catalog.getPage(0, 10));
+        assertThrows(IllegalArgumentException.class, () -> catalog.getPage(1, 0));
+    }
+
+    /** 最終ページより先の番号は、ブックマークを開いた利用者であってサーバエラーではない。 */
+    @Test
+    void answersWithAnEmptyPageBeyondTheLastProduct() {
+        ProductCatalog catalog = catalogOf(product("a", LocalDate.of(2026, 1, 1)));
+
+        CatalogPage page = catalog.getPage(Integer.MAX_VALUE, 50);
+
+        assertEquals(List.of(), skus(page));
+        assertFalse(page.hasNext());
+    }
+
     private static Product product(String sku, LocalDate listedAt) {
         return new Product(sku, "Product " + sku, "cables", new BigDecimal("10.00"), listedAt);
     }
