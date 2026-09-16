@@ -13,4 +13,11 @@ import java.time.LocalDate;
  * @param listedAt the day the product went on sale, or null for a draft that is not on sale yet
  */
 public record Product(String sku, String name, String category, BigDecimal price, LocalDate listedAt) {
+
+    /**
+     * 購入者に表示する名前。名前がまだ無い下書きでは SKU で代用する。
+     */
+    public String displayName() {
+        return name != null ? name : sku;
+    }
 }
