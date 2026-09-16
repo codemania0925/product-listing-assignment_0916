@@ -7,6 +7,8 @@ import java.net.URLDecoder;
 import java.nio.charset.StandardCharsets;
 import java.util.HashMap;
 import java.util.Map;
+import java.util.logging.Level;
+import java.util.logging.Logger;
 
 import com.sun.net.httpserver.HttpExchange;
 import com.sun.net.httpserver.HttpServer;
@@ -19,6 +21,8 @@ public class App {
     static final int DEFAULT_PAGE_SIZE = 10;
     static final int MAX_PAGE_SIZE = 50;
 
+    private static final Logger LOG = Logger.getLogger(App.class.getName());
+
     /**
      * Starts the server on localhost. Use port 0 to pick any free port.
      */
@@ -30,6 +34,9 @@ public class App {
         server.createContext("/products", exchange -> {
             try {
                 handle(exchange, catalog, writer);
+            } catch (IOException | RuntimeException e) {
+                LOG.log(Level.SEVERE, e, () -> "Could not serve " + exchange.getRequestURI());
+                sendStatus(exchange, 500);
             } finally {
                 exchange.close();
             }
@@ -62,6 +69,19 @@ public class App {
         exchange.sendResponseHeaders(200, json.length());
         try (OutputStream body = exchange.getResponseBody()) {
             body.write(json.getBytes());
+        }
+    }
+
+    /**
+     * 本文なしで応答を返す。すでに応答の送信が始まっている場合は何もしない。
+     */
+    private static void sendStatus(HttpExchange exchange, int status) {
+        try {
+            if (exchange.getResponseCode() == -1) {
+                exchange.sendResponseHeaders(status, -1);
+            }
+        } catch (IOException e) {
+            LOG.log(Level.FINE, "Could not send the error response", e);
         }
     }
 
