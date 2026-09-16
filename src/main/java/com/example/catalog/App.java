@@ -20,6 +20,7 @@ public class App {
 
     static final int DEFAULT_PAGE_SIZE = 10;
     static final int MAX_PAGE_SIZE = 50;
+    static final String CONTENT_TYPE_JSON = "application/json; charset=utf-8";
 
     private static final Logger LOG = Logger.getLogger(App.class.getName());
 
@@ -64,11 +65,12 @@ public class App {
             return;
         }
 
-        String json = writer.write(catalog.getPage(page, pageSize));
-        exchange.getResponseHeaders().set("Content-Type", "application/json");
-        exchange.sendResponseHeaders(200, json.length());
+        // Content-Length は文字数ではなくバイト数。ASCII 以外の文字は UTF-8 で 1 バイトに収まらない。
+        byte[] json = writer.write(catalog.getPage(page, pageSize)).getBytes(StandardCharsets.UTF_8);
+        exchange.getResponseHeaders().set("Content-Type", CONTENT_TYPE_JSON);
+        exchange.sendResponseHeaders(200, json.length);
         try (OutputStream body = exchange.getResponseBody()) {
-            body.write(json.getBytes());
+            body.write(json);
         }
     }
 
